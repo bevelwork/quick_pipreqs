@@ -56,8 +56,8 @@ jobs:
     - name: Build binary
       if: steps.version_check.outputs.skip_release == 'false'
       run: |
-        echo "Building quick_ssm"
-        go build -v -o quick_ssm .
+        echo "Building quick_pipreqs"
+        go build -v -o quick_pipreqs ./cmd/quick_pipreqs
 
     - name: Create and push tag
       if: steps.version_check.outputs.skip_release == 'false'
@@ -72,9 +72,9 @@ jobs:
     - name: Generate checksums
       if: steps.version_check.outputs.skip_release == 'false'
       run: |
-        sha256sum quick_ssm > quick_ssm.sha256
+        sha256sum quick_pipreqs > quick_pipreqs.sha256
         echo "Generated checksum:"
-        cat quick_ssm.sha256
+        cat quick_pipreqs.sha256
         
     - name: Create Release
       if: steps.version_check.outputs.skip_release == 'false'
@@ -89,7 +89,7 @@ jobs:
         ## Direct installation
         
         \`\`\`bash
-        go install github.com/bevelwork/quick_ssm@$VERSION
+        go install github.com/bevelwork/quick_pipreqs@$VERSION
         \`\`\`
         
         ## Using this release
@@ -99,17 +99,17 @@ jobs:
         ### Usage
         \`\`\`bash
         # Make executable
-        chmod +x quick_ssm
+        chmod +x quick_pipreqs
         
         # Run with help
-        ./quick_ssm -h
+        ./quick_pipreqs -h
         
         \`\`\`
         
         ## Checksums
-        - SHA256: \`$(sha256sum quick_ssm | cut -d' ' -f1)\`" \
-          ./quick_ssm \
-          ./quick_ssm.sha256
+        - SHA256: \`$(sha256sum quick_pipreqs | cut -d' ' -f1)\`" \
+          ./quick_pipreqs \
+          ./quick_pipreqs.sha256
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
