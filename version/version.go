@@ -5,7 +5,7 @@ import "fmt"
 const (
 	// Update these via make targets
 	Major     = 1
-	Minor     = 3
+	Minor     = 4
 	PatchDate = "20250916" // YYYYMMDD
 )
 
