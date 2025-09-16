@@ -1,0 +1,99 @@
+name: Build and Test
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.25.x'
+        cache: true
+        
+    - name: Verify Go version
+      run: go version
+      
+    - name: Download dependencies
+      run: go mod download
+      
+    - name: Verify dependencies
+      run: go mod verify
+      
+    - name: Run go vet
+      run: go vet ./...
+      
+    - name: Run go fmt check
+      run: |
+        if [ "$(gofmt -s -l . | wc -l)" -gt 0 ]; then
+          echo "The following files are not formatted:"
+          gofmt -s -l .
+          exit 1
+        fi
+        
+    - name: Build binary
+      run: go build -v -o quick-pipreqs ./cmd/quick_pipreqs
+      
+    - name: Test build output
+      run: |
+        if [ ! -f "./quick-pipreqs" ]; then
+          echo "Binary was not created"
+          exit 1
+        fi
+        echo "Binary size: $(ls -lh quick-pipreqs | awk '{print $5}')"
+        
+    - name: Upload build artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: quick-pipreqs-binary-${{ github.sha }}
+        path: quick-pipreqs
+        retention-days: 7
+        
+    - name: Test help output
+      run: |
+        ./quick-pipreqs -h || true
+        
+  test:
+    runs-on: ubuntu-latest
+    needs: build
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.25.x'
+        cache: true
+        
+    - name: Download dependencies
+      run: go mod download
+      
+    - name: Run tests
+      run: go test -v ./...
+      
+    - name: Run race detector
+      run: go test -race ./...
+      
+    - name: Run coverage
+      run: go test -coverprofile=coverage.out ./...
+      
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        file: ./coverage.out
+        flags: unittests
+        name: codecov-umbrella
+        fail_ci_if_error: false
+        
