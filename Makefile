@@ -1,7 +1,7 @@
 .PHONY: help build clean version major minor build-release fmt vet lint deps
 
 help:
-	@echo "quickpip - Available targets:"
+	@echo "quick-pipreqs - Available targets:"
 	@echo "  build          - Build the binary"
 	@echo "  clean          - Clean build artifacts"
 	@echo "  version        - Show current version"
@@ -12,14 +12,14 @@ help:
 	@echo "  deps           - Download and verify dependencies"
 
 build:
-	@echo "Building quickpip..."
-	go build -v -o quickpip ./cmd/quickpip
+	@echo "Building quick-pipreqs..."
+	go build -v -o quick-pipreqs ./cmd/quick_pipreqs
 
 clean:
 	@echo "Cleaning build artifacts..."
-	rm -f quickpip
-	rm -f quickpip-*.sha256
-	rm -f quickpip-v*-linux-amd64
+	rm -f quick-pipreqs
+	rm -f quick-pipreqs-*.sha256
+	rm -f quick-pipreqs-v*-linux-amd64
 
 version:
 	@./scripts/version.sh current

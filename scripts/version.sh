@@ -76,9 +76,9 @@ build_release() {
 	minor=$(grep '^\s*Minor\s*=\s*' version/version.go | sed -E 's/.*Minor\s*=\s*([0-9]+).*/\1/')
 	sed -i "s/^\(\s*PatchDate\s*=\s*\)\"[0-9]*\"/\1\"${today}\"/" version/version.go
 	local version=$(generate_version)
-	local binary_name="quickpip-${version}-linux-amd64"
+	local binary_name="quick-pipreqs-${version}-linux-amd64"
 	print_color "$BLUE" "Building release binary: $binary_name"
-	GOOS=linux GOARCH=amd64 go build -v -o "$binary_name" ./cmd/quickpip
+	GOOS=linux GOARCH=amd64 go build -v -o "$binary_name" ./cmd/quick_pipreqs
 	sha256sum "$binary_name" > "${binary_name}.sha256"
 	print_color "$GREEN" "Built: $binary_name"
 	print_color "$GREEN" "Checksum: ${binary_name}.sha256"
@@ -103,7 +103,7 @@ case "${1:-help}" in
 		build_release
 		;;
 	"help"|*)
-		print_color "$BLUE" "quickpip Version Management"
+		print_color "$BLUE" "quick-pipreqs Version Management"
 		echo
 		print_color "$YELLOW" "Usage: $0 <command> [options]"
 		echo

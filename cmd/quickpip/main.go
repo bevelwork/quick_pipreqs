@@ -11,7 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"quickpip/version"
+	"quick-pipreqs/version"
 	"sort"
 	"strings"
 	"sync"
@@ -23,11 +23,13 @@ func main() {
 		dryRun      bool
 		maxDepth    int
 		concurrency int
+		verbose     bool
 	)
 	flag.BoolVar(&dryRun, "dry-run", false, "print actions without executing")
 	showVersion := flag.Bool("version", false, "print version and exit")
 	flag.IntVar(&maxDepth, "max-depth", 2, "maximum recursion depth (0 = only root)")
 	flag.IntVar(&concurrency, "concurrency", 12, "max concurrent updates (1-12)")
+	flag.BoolVar(&verbose, "verbose", false, "print verbose output")
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: %s [options] <path>\n", os.Args[0])
 		flag.PrintDefaults()
@@ -64,8 +66,10 @@ func main() {
 	// log discovered directories
 	logger := log.New(os.Stdout, "", log.LstdFlags)
 	logger.Printf("discovered %d directories to process", len(reqDirs))
-	for _, d := range reqDirs {
-		logger.Println(" -", d)
+	if verbose {
+		for _, d := range reqDirs {
+			logger.Println(" -", d)
+		}
 	}
 
 	if concurrency < 1 {
