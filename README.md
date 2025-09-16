@@ -2,6 +2,22 @@
 
 A CLI tool to quickly regenerate Python `requirements.txt` files using `pipreqs` across a project tree.
 
+## Why
+
+I find myself in this situation often with clients:
+
+```
+├── util_1
+│   └── requirements.txt
+├── util_2
+│   └── requirements.txt
+└── util_n
+    └── requirements.txt
+```
+
+`Dependabot` and `Renovate` often will get hung up on similar-sounding dependencies (e.g. boto and botocore getting stuck on noncompatible version) and I don't want to
+fuss over resolving merge conflicts. Ergo this utility walks a directory and refreshes each of the `requirements.txt` files. No fuss, no muss.
+
 ## Installation
 
 ```bash
