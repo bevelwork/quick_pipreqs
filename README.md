@@ -22,6 +22,9 @@ fuss over resolving merge conflicts. Ergo this utility walks a directory and ref
 
 ```bash
 go install github.com/bevelwork/quick_pipreqs@latest
+
+brew tap bevelwork/homebrew-tap
+brew install quick-pipreqs
 ```
 
 **Prerequisites:** Python environment with `pipreqs` installed ([install pipreqs](https://github.com/bndr/pipreqs#installation))
