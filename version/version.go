@@ -5,8 +5,8 @@ import "fmt"
 const (
 	// Update these via make targets
 	Major     = 1
-	Minor     = 5
-	PatchDate = "20250916" // YYYYMMDD
+	Minor     = 6
+	PatchDate = "20250917" // YYYYMMDD
 )
 
 var Full = fmt.Sprintf("%d.%d.%s", Major, Minor, PatchDate)
