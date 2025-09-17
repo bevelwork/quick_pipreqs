@@ -19,7 +19,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"quick-pipreqs/version"
+	"github.com/bevelwork/quick_pipreqs/version"
 )
 
 // getConsoleHeight attempts to detect the console height, returns default if unable
