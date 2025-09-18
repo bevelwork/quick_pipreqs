@@ -13,138 +13,12 @@ import (
 	"os/exec"
 	"path/filepath"
 	"sort"
-	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
-	"time"
 
 	"github.com/bevelwork/quick_pipreqs/version"
 )
-
-// getConsoleHeight attempts to detect the console height, returns default if unable
-func getConsoleHeight() int {
-	// Try to get terminal size using stty
-	cmd := exec.Command("stty", "size")
-	cmd.Stdin = os.Stdin
-	output, err := cmd.Output()
-	if err != nil {
-		return 24 // default fallback
-	}
-
-	// Parse output: "rows cols"
-	parts := strings.Fields(string(output))
-	if len(parts) >= 1 {
-		if height, err := strconv.Atoi(parts[0]); err == nil && height > 0 {
-			return height
-		}
-	}
-
-	return 24 // default fallback
-}
-
-// ProgressState represents the state of a directory being processed
-type ProgressState int
-
-const (
-	StateWaiting ProgressState = iota
-	StateActive
-	StateDone
-)
-
-// ProgressTracker tracks the progress of all directories
-type ProgressTracker struct {
-	states map[string]ProgressState
-	mutex  sync.RWMutex
-	total  int
-	root   string // base path for relative path display
-	ctx    context.Context
-}
-
-// NewProgressTracker creates a new progress tracker
-func NewProgressTracker(dirs []string, root string, ctx context.Context) *ProgressTracker {
-	states := make(map[string]ProgressState)
-	for _, dir := range dirs {
-		states[dir] = StateWaiting
-	}
-	return &ProgressTracker{
-		states: states,
-		total:  len(dirs),
-		root:   root,
-		ctx:    ctx,
-	}
-}
-
-// SetState updates the state of a directory
-func (pt *ProgressTracker) SetState(dir string, state ProgressState) {
-	pt.mutex.Lock()
-	defer pt.mutex.Unlock()
-	pt.states[dir] = state
-}
-
-// GetCounts returns the counts for each state
-func (pt *ProgressTracker) GetCounts() (waiting, active, done int) {
-	pt.mutex.RLock()
-	defer pt.mutex.RUnlock()
-
-	for _, state := range pt.states {
-		switch state {
-		case StateWaiting:
-			waiting++
-		case StateActive:
-			active++
-		case StateDone:
-			done++
-		}
-	}
-	return
-}
-
-// GetActiveDirs returns a list of currently active directories
-func (pt *ProgressTracker) GetActiveDirs() []string {
-	pt.mutex.RLock()
-	defer pt.mutex.RUnlock()
-
-	var active []string
-	for dir, state := range pt.states {
-		if state == StateActive {
-			active = append(active, dir)
-		}
-	}
-	return active
-}
-
-// PrintProgress prints the current progress with active directories in a fixed 6-line buffer
-func (pt *ProgressTracker) PrintProgress() {
-	// Get active directories
-	activeDirs := pt.GetActiveDirs()
-
-	// Move cursor up 6 lines to start of our buffer area
-	fmt.Printf("\033[6A")
-
-	// Clear and print each of the 6 lines
-	for i := 0; i < 6; i++ {
-		fmt.Printf("\r\033[K") // Clear current line and return to beginning
-
-		if i < len(activeDirs) {
-			// Print active directory
-			relPath, err := filepath.Rel(pt.root, activeDirs[i])
-			if err != nil {
-				relPath = activeDirs[i] // fallback to absolute path if relative fails
-			}
-			fmt.Printf("Active: %s", relPath)
-		}
-		// If no active directory for this line, it remains empty (cleared above)
-
-		if i < 5 { // Move to next line for lines 1-5
-			fmt.Printf("\n")
-		}
-	}
-
-	// Print progress bar on the 6th line (no newline after this)
-	waiting, active, done := pt.GetCounts()
-	fmt.Printf("\r\033[K[ %d: Waiting, %d Active, %d Done ]", waiting, active, done)
-}
 
 func main() {
 	var (
@@ -175,6 +49,18 @@ func main() {
 		fmt.Println(version.Full)
 		return
 	}
+
+	// log discovered directories
+	logger := log.New(os.Stdout, "", log.LstdFlags)
+
+	// Validation
+	pipreqsVersion, err := runCmd("pipreqs", []string{"--version"}, ".")
+	if err != nil {
+		logger.Fatalf("error: pipreqs not found in PATH: %v", err)
+		return
+	}
+	logger.Printf("pipreqs version: %s", pipreqsVersion)
+
 	root := flag.Arg(0)
 
 	reqDirs, err := findRequirementsDirs(root, maxDepth)
@@ -191,8 +77,6 @@ func main() {
 	// deterministic processing order
 	sort.Strings(reqDirs)
 
-	// log discovered directories
-	logger := log.New(os.Stdout, "", log.LstdFlags)
 	logger.Printf("discovered %d directories to process", len(reqDirs))
 	if verbose {
 		for _, d := range reqDirs {
@@ -225,40 +109,6 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	// Create progress tracker
-	progress := NewProgressTracker(reqDirs, root, ctx)
-
-	// Get console height and scroll down by one full screen to ensure clean state
-	consoleHeight := getConsoleHeight()
-	fmt.Printf("\033[%dS", consoleHeight) // Scroll down by console height
-	fmt.Printf("\033[1;1H")               // Move cursor to top-left after scroll
-
-	// Initialize the 6-line display buffer
-	fmt.Println() // Start on a new line
-	for i := 0; i < 6; i++ {
-		fmt.Println() // Print 6 empty lines for our buffer
-	}
-
-	// Move cursor back to the beginning of our buffer area
-	fmt.Printf("\033[6A")
-
-	// Start progress display goroutine
-	go func() {
-		ticker := time.NewTicker(200 * time.Millisecond)
-		defer ticker.Stop()
-		for {
-			select {
-			case <-ticker.C:
-				progress.PrintProgress()
-			case <-ctx.Done():
-				progress.PrintProgress()
-				// Move cursor to end of progress bar and add final newline
-				fmt.Printf("\n")
-				return
-			}
-		}
-	}()
-
 	for _, dir := range reqDirs {
 		wg.Add(1)
 		sem <- struct{}{}
@@ -273,12 +123,6 @@ func main() {
 			default:
 			}
 
-			// Mark as active when starting
-			progress.SetState(d, StateActive)
-
-			// Don't print verbose output during progress display to avoid scrolling
-			// Verbose output is disabled when progress tracking is active
-
 			changed, err := updateRequirements(d, dryRun)
 			if err != nil {
 				// Don't print error output during progress display to avoid scrolling
@@ -289,9 +133,6 @@ func main() {
 					atomic.AddUint64(&updatedCount, 1)
 				}
 			}
-
-			// Mark as done when finished
-			progress.SetState(d, StateDone)
 		}(dir)
 	}
 	wg.Wait()
@@ -299,12 +140,6 @@ func main() {
 	// Cancel context to stop progress display
 	cancel()
 
-	// Scroll down by one terminal height before final output
-	fmt.Printf("\033[%dS", consoleHeight) // Scroll down by console height
-	fmt.Printf("\033[1;1H")               // Move cursor to top-left after scroll
-
-	// Print final status bar
-	fmt.Printf("[ %d: Waiting, %d Active, %d Done ]\n", 0, 0, len(reqDirs))
 	fmt.Println("processed:", len(reqDirs), "updated:", atomic.LoadUint64(&updatedCount), "errors:", atomic.LoadUint64(&errorCount))
 }
 
